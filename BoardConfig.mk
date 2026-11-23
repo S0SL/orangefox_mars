@@ -12,7 +12,7 @@
 # (build/make/core/Makefile, "Target boot image from recovery").
 #
 # Sources for each block are annotated inline; see docs/PROVENANCE.md for the
-# full mapping and docs/KNOWN_ISSUES.md for everything that is still unverified.
+# full mapping and docs/history/KNOWN_ISSUES.md for everything that is still unverified.
 #
 
 DEVICE_PATH := device/xiaomi/mars

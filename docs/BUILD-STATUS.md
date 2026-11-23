@@ -1,7 +1,10 @@
-# CI build status
+# CI build status（排障编年史）
 
-Track record of the `Build OrangeFox recovery (mars)` workflow.
-Updated by hand after each run.
+Track record of every build/run failure this project hit, in order.
+
+> **当前结论不在这里。** 现状、修复后的完整清单、待办与限制见
+> [STATUS.md](STATUS.md)；构建步骤见 [BUILD-ON-SERVER.md](BUILD-ON-SERVER.md)。
+> 本文件保留"当时是怎么坏、怎么定位"的过程记录，方便下次遇到相似现象时快速对照。
 
 ## Run 1 — RESULT: build failed, diagnosed and fixed
 
@@ -929,7 +932,7 @@ compute JOBS and then run a bare `mka`, and soong ignores MAKEFLAGS -- the ninja
 at `-j 26` (= nproc+2), which is what the `Warning: high -j26 count compared to 22.1GB of RAM` line in
 the logs is about.  Measured on this box: 16 jobs -> 15m40s, 12 jobs -> 10m32s.
 
-Three independent changes went in (details in [V4-REPORT.md](V4-REPORT.md)):
+Three independent changes went in (details in [V4-REPORT.md](history/V4-REPORT.md)):
 
 1. **FBE decryption** (`device.mk`): `TW_USE_FSCRYPT_POLICY := 2`, `TW_INCLUDE_CRYPTO := true`
    (+ the two implied switches), `qcom_decrypt`/`qcom_decrypt_fbe`, the platform-version /

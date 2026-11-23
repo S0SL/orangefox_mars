@@ -1,280 +1,106 @@
-# twrp_mars — OrangeFox recovery for the Xiaomi Mi 11 Pro (mars)
+# OrangeFox recovery for the Xiaomi Mi 11 Pro (`mars`)
 
-Device tree + cloud CI for an **OrangeFox Recovery** build (base: `fox_14.1`)
-for the **Xiaomi Mi 11 Pro**, codename **`mars`**, SoC **Qualcomm sm8350
-(Snapdragon 888)**, **A/B**, **no dedicated recovery partition**.
+Device tree for building an **OrangeFox Recovery** (base: `fox_14.1`, i.e. AOSP 14
++ OrangeFox R12) for the **Xiaomi Mi 11 Pro**, codename **`mars`**, SoC
+**Qualcomm sm8350 (Snapdragon 888)**, **A/B**, **no dedicated recovery partition**.
 
-> Status: **phase 1** — build the recovery, get the UI up, flash zips,
-> back up / restore partitions, MTP + ADB.
-> **Decrypting `/data` is explicitly out of scope** (that is phase 2, see
-> [docs/PHASE2-CRYPTO.md](docs/PHASE2-CRYPTO.md)).
+The recovery is built **into `boot.img`** (`BOARD_USES_RECOVERY_AS_BOOT`); nothing
+in this repository flashes anything by itself.
 
-Nothing in this repository flashes anything to a device by itself.
+> **Current status: v4.9 — usable.**
+> `/data` is decrypted with the user's PIN (FBE, hardware-wrapped keys, metadata
+> encryption), ADB and MTP work, battery/language/theme defaults are applied, and
+> zip flashing + partition backup/restore work.
+> Full status, the fix history and the remaining work: **[docs/STATUS.md](docs/STATUS.md)**.
+> The latest tested image is the `boot-v4.9` asset of the
+> [`recovery-test`](https://github.com/S0SL/twrp_mars/releases/tag/recovery-test)
+> pre-release (`sha256 0567218e977f45c51267291a04c20557c12f594cec6d943db5753dc8d127b4b1`).
 
 ---
 
-## 1. What you get
+## 1. Try it without flashing
 
-The recovery is built **into `boot.img`** (`BOARD_USES_RECOVERY_AS_BOOT`),
-because mars has no `recovery` partition. `vendor_boot` is left untouched.
+```sh
+curl -L -O https://github.com/S0SL/twrp_mars/releases/download/recovery-test/boot-v4.9.img.gz
+gunzip boot-v4.9.img.gz
+fastboot boot boot-v4.9.img          # loads it into RAM; writes nothing
+```
 
-Artifacts of a successful build (`out/target/product/mars/`):
+`fastboot flash boot boot-v4.9.img` makes the device boot into recovery **every
+time** — that is inherent to "no recovery partition" (see
+[limitations](docs/STATUS.md)). To go back to Android,
+re-flash the ROM's own `boot.img`.
 
-| file | what it is |
+## 2. Build it
+
+You need your own build server (the AOSP tree does not fit in a container):
+
+* **step by step:** [docs/BUILD-ON-SERVER.md](docs/BUILD-ON-SERVER.md)
+* short version, on a machine that already has the tree:
+
+  ```sh
+  git clone https://github.com/S0SL/twrp_mars.git ~/twrp-mars
+  ~/twrp-mars/scripts/build-local.sh --fox-dir ~/fox_14.1            # first run
+  ~/twrp-mars/scripts/build-local.sh --fox-dir ~/fox_14.1 --skip-sync  # later runs
+  ```
+
+  The build job is `bootimage`; the artifact is `out/target/product/mars/boot.img`.
+  `MARS_JOBS=12` is the sweet spot on a 24-core / 22 GB box (16 threads is slower).
+
+The build script runs two guards before compiling anything:
+
+| hook | script | what it protects against |
+| --- | --- | --- |
+| `== 0. shell syntax lint ==` | `scripts/check-shell.sh` | bash-isms in the shell scripts that ship in the ramdisk (recovery runs Android **mksh**; a `${ro.boot.slot_suffix}` killed the v4.7 firmware script) |
+| `== 0b. build-tree patches ==` | `scripts/apply-patches.sh` | re-applies the AOSP-side fixes (FBE credential flow, GUI drag cadence) that this device needs but that cannot live in a device tree |
+
+Static checks for the device tree itself: `./scripts/check-tree.sh` (required
+files, fstab/flags syntax, makefile sanity, codename consistency) and
+`./scripts/check-shell.sh`.
+
+## 3. Repository layout
+
+```
+BoardConfig.mk device.mk fox_mars.mk twrp_mars.mk AndroidProducts.mk Android.mk
+vendorsetup.sh board-info.txt manifest.xml modules.load.recovery
+firmware/                       touch firmware staged into the ramdisk
+prebuilt/                       prebuilt kernel Image (not committed)
+recovery/root/                  files that go into the recovery ramdisk:
+  init.recovery.qcom.rc           mounts + property defaults (see STATUS.md)
+  init.recovery.usb.rc            QTI configfs gadget (adb + MTP + sideload)
+  sbin/mars-fw-mount.sh           mounts the firmware/modem image for the TEE
+  system/etc/{recovery.fstab,twrp.flags}
+  system/bin/, vendor/lib64/      QSEE/keymaster/gatekeeper blobs (see docs/PROVENANCE.md)
+  twres/languages/zh_CN.xml       simplified-Chinese UI translation
+  vendor/etc/vintf/manifest.xml   VINTF declarations the vendor HALs need
+scripts/                        sync / build / patch / check / publish helpers
+patches/                        notes for the build-tree fixes (applied by apply-patches.sh)
+docs/                           see below
+```
+
+## 4. Documentation
+
+| file | content |
 | --- | --- |
-| `boot.img` | kernel + OrangeFox recovery ramdisk — this is the image you flash |
-| `recovery.img` | side product of the same ramdisk (do **not** flash on mars) |
-| `OrangeFox-<ver>-<type>-mars.img` | OrangeFox's copy of `boot.img` |
-| `OrangeFox-<ver>-<type>-mars.zip` | OrangeFox's flashable installer zip |
+| **[docs/STATUS.md](docs/STATUS.md)** | **handover doc** — what works, every fix and why, what is left (v5), known limitations |
+| [docs/BUILD-ON-SERVER.md](docs/BUILD-ON-SERVER.md) | full build guide, timings, every failure this project hit |
+| [docs/BACKUP-GUIDE.md](docs/BACKUP-GUIDE.md) | how to back up `/data` (rooted Android) and partitions (recovery), and how to restore |
+| [docs/PROVENANCE.md](docs/PROVENANCE.md) | where every blob comes from |
+| [docs/RAMDISK-MODULES.md](docs/RAMDISK-MODULES.md) | staging kernel modules (touch/display) into the ramdisk |
+| [docs/BUILD-STATUS.md](docs/BUILD-STATUS.md) | troubleshooting chronology (the "why" behind every guard) |
+| [docs/kernel-prep/](docs/kernel-prep/) | prepared-but-unpushed kernel-side change (touch modules) |
+| [docs/history/](docs/history/) | superseded phase reports and plans (v4, v4.6, phase 2, fstab diff, phase-1 known issues) |
 
-Flash (unlocked bootloader):
+## 5. Support / known limitations (short)
 
-```sh
-fastboot flash boot boot.img
-# or, from within an existing recovery:
-#   install OrangeFox-*-mars.zip
-```
+* No `recovery` partition: a flashed `boot.img` boots recovery, not Android.
+* `/data` decryption needs the phone's TEE **and** the vendor property
+  `vendor.gatekeeper.disable_spu=true` (the recovery sets it; the stock ROM ships
+  it — see [STATUS.md](docs/STATUS.md)).
+* SELinux runs **permissive** in this recovery (enforcing needs a sepolicy set).
+* `AB_OTA_UPDATER` is off, so zips that rewrite logical partitions
+  (`system`/`vendor`/…) are not supported yet — see the v5 list in STATUS.md.
+* The image is signed with AVB test keys — for unlocked bootloaders only.
 
----
-
-## 2. Repository layout
-
-This repository **is** the device tree. That follows the TWRP convention, so
-`repo`/`git clone` can drop it straight into `device/xiaomi/mars`:
-
-```
-BoardConfig.mk           # board config: A/B, recovery-as-boot, prebuilt kernel, TW_ switches
-twrp_mars.mk             # PRODUCT_NAME := twrp_mars   (lunch: twrp_mars-ap2a-eng)
-fox_mars.mk              # OrangeFox OF_* switches
-device.mk                # product config: recovery modules, touch firmware, crypto off
-AndroidProducts.mk       # PRODUCT_MAKEFILES + COMMON_LUNCH_CHOICES
-Android.mk
-vendorsetup.sh           # OrangeFox environment (FOX_BUILD_DEVICE=mars, ...)
-board-info.txt
-manifest.xml             # retained from the 2021 TWRP tree; NOT wired up in phase 1
-modules.load.recovery    # reference list of modules the recovery wants; NOT wired up in phase 1
-firmware/                # FTS touch panel firmware (also staged into the ramdisk below)
-recovery/root/           # merged into the recovery ramdisk root
-  system/etc/recovery.fstab   # TARGET_RECOVERY_FSTAB
-  system/etc/twrp.flags       # backup / flash / display flags
-  ueventd.qcom.rc
-  init.recovery.qcom.rc
-  lib/firmware/st_fts_k2*.ftb # touch firmware inside the ramdisk
-prebuilt/                # kernel Image lands here at build time (git-ignored)
-scripts/fetch-kernel.sh  # downloads / extracts the prebuilt kernel Image
-scripts/fetch-modules.sh # (prepared) downloads the matching touch/display .ko set
-scripts/fox-sync.sh      # the CORRECT fox_14.1 sync procedure
-scripts/check-tree.sh    # static validation of the tree (no AOSP needed)
-docs/                    # provenance, fstab diff, known issues, phase-2 notes
-docs/RAMDISK-MODULES.md  # plan: build touch/display .ko into the recovery ramdisk (I7/I11)
-.github/workflows/build-recovery.yml
-```
-
-`recovery/root/` is picked up automatically: the TWRP-patched build system uses
-`$(TARGET_DEVICE_DIR)/recovery/root` when `TARGET_RECOVERY_DEVICE_DIRS` is unset
-(`build/make/core/Makefile`, `recovery_root_private`).
-
----
-
-## 3. Building
-
-### 3.1 On your own server (recommended)
-
-```sh
-git clone https://github.com/S0SL/twrp_mars.git ~/twrp_mars
-~/twrp_mars/scripts/build-local.sh --fox-dir ~/fox_14.1
-# -> ~/twrp_mars/dist/boot.img
-```
-
-Full walkthrough — hardware/disk requirements, one-time `apt-get`, timings,
-ccache, artifacts and a troubleshooting table built from every failure this
-project has hit — is in **[docs/BUILD-ON-SERVER.md](docs/BUILD-ON-SERVER.md)**.
-The cloud workflow below stays valid as a fallback.
-
-### 3.2 On CI (fallback)
-
-`.github/workflows/build-recovery.yml`, manual trigger:
-
-* **Actions → "Build OrangeFox recovery (mars)" → Run workflow**
-
-Inputs: `fox_branch` (fixed to `14.1`), `kernel_url`, `build_type`, `runner`.
-
-Timing on a stock `ubuntu-22.04` GitHub runner:
-
-| stage | expected |
-| --- | --- |
-| apt + `repo` install | 2–4 min |
-| `repo sync` (cold, no cache) | **30–60 min** |
-| device tree + kernel install | < 1 min |
-| `mka recoveryimage` | **30–60 min** |
-| **total** | **~1.5–2.5 h cold**, ~1 h warm |
-
-Job timeout is set to 350 minutes. Measured disk on that runner: 118 GB used
-right after the sync, i.e. only ~28 GB left for `out/` — which is why the
-server path is preferred.
-
-### 3.3 Static checks (no AOSP tree needed)
-
-```sh
-./scripts/check-tree.sh
-```
-
-Validates that every file the build system looks for exists, that
-`recovery.fstab` is a well-formed fs_mgr fstab with only known flags, that
-`twrp.flags` is well-formed, that makefile conditionals balance, that the
-workflow is valid YAML, that no obsolete build variable (Kati hard error) is
-set, and that no build-host path or wrong codename leaked in.
-
-### 3.4 Locally by hand
-
-You need ~150–200 GB free and a Linux box; a full Android 14 tree is involved.
-[docs/BUILD-ON-SERVER.md](docs/BUILD-ON-SERVER.md) has the dependency list and
-the troubleshooting table; `scripts/build-local.sh` runs exactly this:
-
-```sh
-export FOX_DIR=$HOME/fox_14.1
-./scripts/fox-sync.sh "$FOX_DIR"
-
-./scripts/fetch-kernel.sh "" "$FOX_DIR/device/xiaomi/mars/prebuilt/Image"
-rsync -a --exclude '.git/' --exclude '.github/' --exclude 'scripts/' \
-         --exclude 'docs/' ./ "$FOX_DIR/device/xiaomi/mars/"
-
-cd "$FOX_DIR"
-export LC_ALL=C FOX_BUILD_DEVICE=mars FOX_BUILD_TYPE=Unofficial
-export ALLOW_MISSING_DEPENDENCIES=true
-set +u                       # build/envsetup.sh is not nounset-safe
-source build/envsetup.sh
-set -u
-lunch twrp_mars-ap2a-eng
-mka recoveryimage
-# -> out/target/product/mars/boot.img
-```
-
-### 3.5 Why `scripts/fox-sync.sh` and not `repo init -b fox_14.1`
-
-`git ls-remote --heads https://gitlab.com/OrangeFox/sync.git` returns **only
-`refs/heads/master`** — there is no `fox_14.1` branch on the sync repo, so
-
-```sh
-repo init -u https://gitlab.com/OrangeFox/sync.git -b fox_14.1   # FAILS
-```
-
-is not a valid command. `fox_14.1` is a *legacy* OrangeFox branch: the
-supported flow is `orangefox_sync.sh --branch 14.1`, which this repository
-wraps in `scripts/fox-sync.sh`. See [docs/PROVENANCE.md](docs/PROVENANCE.md) §4.
-
-### 3.6 The lunch target
-
-```sh
-lunch twrp_mars-ap2a-eng
-```
-
-**Three parts are mandatory.** The `build/make` fork that fox_14.1 uses
-(`nebrassy/android_build`, `android-14`) enforces this at the top of `lunch()`:
-
-```sh
-# This must be <product>-<release>-<variant>
-IFS="-" read -r product release variant <<< "$selection"
-if [[ -z "$product" ]] || [[ -z "$release" ]] || [[ -z "$variant" ]]
-then
-    echo "Invalid lunch combo: $selection"
-    echo "Valid combos must be of the form <product>-<release>-<variant>"
-    return 1
-fi
-```
-
-So the historical two-part `twrp_mars-eng` splits into
-`product=twrp_mars, release=eng, variant=<empty>` and is **always rejected**.
-This is why OrangeFox's own fox_16.0 documentation says
-`lunch twrp_mondrian-bp2a-eng`, and why `OrangeFox/device/vayu`'s
-`COMMON_LUNCH_CHOICES := twrp_vayu-eng` (fox_14.1) is stale — that entry cannot
-work on this build system either.
-
-`ap2a` is this manifest's release token (the OrangeFox sync
-script pins `android14-qpr3-release` for the projects it re-clones). The CI
-probes `bp2a ap2a ap3a udc trunk_staging` before giving up, so a rename in a
-future manifest will not need a code change.
-
-Despite the OrangeFox branding, `PRODUCT_NAME` stays `twrp_<device>` — the
-reference tree `OrangeFox/device/vayu` (branch `fox_14.1`) declares
-`PRODUCT_NAME := twrp_vayu`.
-
----
-
-## 4. Kernel and dtb
-
-The kernel is **prebuilt** (`TARGET_PREBUILT_KERNEL := prebuilt/Image`), taken
-from the companion kernel project
-[S0SL/android_kernel_xiaomi_sm8350](https://github.com/S0SL/android_kernel_xiaomi_sm8350).
-`scripts/fetch-kernel.sh` either extracts `Image` from an AnyKernel3 release zip
-or downloads a raw `Image`.
-
-**No dtb or dtbo is required.** `boot` header v3 has no dtb field — on mars the
-dtb lives in `vendor_boot`, which this project never touches. Verified: the
-official LineageOS 23.2 `boot.img` unpacks to exactly `kernel` + `ramdisk.cpio`
-with `HEADER_VER [3]`. Consequently `BOARD_INCLUDE_DTB_IN_BOOTIMG` is
-deliberately **not** set.
-
----
-
-## 5. Current progress
-
-| item | state |
-| --- | --- |
-| Device tree synthesised | done |
-| `recovery.fstab` / `twrp.flags` | done, mars-specific |
-| Build path | **moved to your own server** — [docs/BUILD-ON-SERVER.md](docs/BUILD-ON-SERVER.md) + `scripts/build-local.sh`; the cloud workflow stays as a fallback |
-| Cloud CI | 6 rounds, all fixed forward; run log history in [docs/BUILD-STATUS.md](docs/BUILD-STATUS.md) |
-| First successful build | **not yet** — the last blocker (an obsolete board variable) is fixed; next round should reach the compile |
-| Touch/display `.ko` in the ramdisk (I7/I11) | plan + kernel patch prepared and dry-run verified, **not pushed**: [docs/RAMDISK-MODULES.md](docs/RAMDISK-MODULES.md), [docs/kernel-prep/](docs/kernel-prep/README.md) |
-| Verified booting on hardware | **not yet** — nothing was flashed |
-| `/data` decryption | not started (phase 2) |
-
----
-
-## 6. Known issues (short list)
-
-1. **Touch firmware is borrowed from `venus`.** `st_fts_k2*.ftb` came from the
-   OrangeFox venus tree; they have not been confirmed against a mars ROM dump.
-2. **Touch/display modules come from the installed ROM**, because the kernel is
-   prebuilt and no `.ko` is compiled. They only load if the ROM's modules match
-   the kernel (`CONFIG_MODVERSIONS` / vermagic) — which is exactly why
-   cross-ROM (HyperOS 2 ↔ LineageOS 23.2) flashing is the riskiest goal.
-   Building and embedding the modules is the fix; see
-   [docs/RAMDISK-MODULES.md](docs/RAMDISK-MODULES.md).
-3. **⚠ Never ship a `modules.load.recovery` (or `modules.load`) inside the
-   recovery ramdisk that lists more modules than are actually present and
-   loadable.** In recovery mode AOSP's first-stage init
-   (`system/core/init/first_stage_init.cpp`) prefers `modules.load.recovery`,
-   and `libmodprobe` returning `false` for a single module makes init
-   `LOG(FATAL) << "Failed to load kernel modules"` — the image then does not
-   boot at all. TWRP's own loader tolerates failures; init's does not.
-   Concretely: derive any load list from the packaged `.ko` set, and prefer the
-   no-load-list design in [docs/RAMDISK-MODULES.md](docs/RAMDISK-MODULES.md)
-   §3.1, which also keeps the OrangeFox-installer path (recovery running on the
-   *ROM's* kernel) working.
-4. **No haptics** in phase 1 (`TW_NO_HAPTICS := true`), to avoid pulling in the
-   sm8350 AIDL vibrator HAL.
-5. **No crypto**: `/data` will show as unencrypted-but-unmountable. By design.
-6. `.repo` cache save is best-effort; GitHub's 10 GB per-repo cache limit may
-   reject it.
-
-Full list and the risk table: [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
-
----
-
-## 7. Documentation index
-
-* [docs/PROVENANCE.md](docs/PROVENANCE.md) — per-file origin (LineageOS /
-  TeamWin / OrangeFox / newly written) and every open question.
-* [docs/FSTAB-DIFF.md](docs/FSTAB-DIFF.md) — LineageOS vs TWRP diffs for the
-  same-named files, and the crypto-relevant differences.
-* [docs/PHASE2-CRYPTO.md](docs/PHASE2-CRYPTO.md) — what phase 2 has to solve.
-* [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) — risks and open questions.
-* [docs/RAMDISK-MODULES.md](docs/RAMDISK-MODULES.md) — plan for building the
-  touch/display `.ko` into the recovery ramdisk (I7/I11), with the kernel-side
-  patch prepared in [docs/kernel-prep/](docs/kernel-prep/README.md).
-* [docs/BUILD-ON-SERVER.md](docs/BUILD-ON-SERVER.md) — build it on your own
-  Ubuntu server from zero, with timings, requirements and the
-  troubleshooting table (`scripts/build-local.sh`).
-* [docs/BUILD-STATUS.md](docs/BUILD-STATUS.md) — build run history.
+Everything above is explained, with evidence and the exact source locations, in
+**[docs/STATUS.md](docs/STATUS.md)**.

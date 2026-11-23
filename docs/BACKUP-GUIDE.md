@@ -1,8 +1,11 @@
 # 备份与救砖指南（mars / 小米 11 Pro）
 
-> 背景：本机 `/data` 是 **metadata + FBE（凭据加密）**。v4.5 的 recovery 已经能解开 **metadata** 层，
-> 但**用户的 CE（凭据级）存储仍需 gatekeeper 校验**（详见 [`V4.6-PLAN.md`](V4.6-PLAN.md) §2）。
-> 因此在 recovery 修好之前，**"能开机时"备份是唯一能拿到明文数据、且跨设备可用的方式**。
+> 背景：本机 `/data` 是 **metadata + FBE（凭据加密）**。**v4.9 的 recovery 已能完整解密**
+> （metadata 层 + 用户 CE 存储，实测 `Data successfully decrypted`），所以 recovery 里也能
+> 直接读写 `/data`、`/sdcard`。本指南的两种备份方式各有用途：
+> * **方案 A（Android 内，root）**：拿到**明文**，跨设备可用，是换机/救砖的依靠；
+> * **方案 B（recovery 内）**：分区/裸镜像兜底，**只能在同机、TEE 完好时**恢复。
+> 解密链路的历史分析见 [`history/V4.6-PLAN.md`](history/V4.6-PLAN.md)。
 
 ---
 

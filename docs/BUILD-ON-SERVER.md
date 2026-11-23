@@ -162,7 +162,7 @@ Budget 200 GB to be comfortable, especially with ccache.
 | `No release config found for TARGET_RELEASE: bp2a. Available releases are: ap2a` | the release token was guessed | take the token from `ls build/release/release_configs/` — for this manifest it is `ap2a` |
 | `device/xiaomi/mars/BoardConfig.mk:124: error: BOARD_BUILD_SYSTEM_ROOT_IMAGE is obsolete` | Kati makes *any* use of a `KATI_obsolete_var` a hard error | already fixed in the tree; `scripts/check-tree.sh` now fails if it comes back (148 obsolete names in `scripts/obsolete-build-vars.txt`) |
 | `** Don't have a product spec for: 'twrp_mars'` | almost always *fallout*: `dumpvars` failed earlier | scroll up for the first real error — do not chase the product spec |
-| `vendor/qcom/opensource/commonsys-intf/display is not in the manifest` (warning) | that CAF project is not in this manifest | harmless by design; if the display stays dark, drop the three `.so` files into `recovery/root/vendor/lib64/` (see `docs/KNOWN_ISSUES.md` I16) |
+| `vendor/qcom/opensource/commonsys-intf/display is not in the manifest` (warning) | that CAF project is not in this manifest | harmless by design; if the display stays dark, drop the three `.so` files into `recovery/root/vendor/lib64/` (see `docs/history/KNOWN_ISSUES.md` I16) |
 | `No space left on device` | disk | free space or move the tree; 200 GB recommended |
 | build dies with OOM / `virtual memory exhausted` | RAM | `--jobs 4` (or lower) |
 | touch or the panel do not work in the recovery | the kernel's modules are not in the ramdisk and the ROM's modules do not match our kernel | expected before the kernel change lands — see `docs/RAMDISK-MODULES.md`; the ROM's `.ko` files can never load into our prebuilt Image (vermagic includes the build commit) |
@@ -178,7 +178,7 @@ three-part, no obsolete build variables, workflow and shell syntax):
 ## 7. What is deliberately *not* in this path
 
 * **No /data decryption** (`TW_INCLUDE_CRYPTO := false`) — phase 2, see
-  `docs/PHASE2-CRYPTO.md`.
+  `docs/history/PHASE2-CRYPTO.md`.
 * **No CI caches or artifact uploads** — those live only in the GitHub
   workflow; `scripts/fox-sync.sh` is pure build logic and is reused unchanged.
 * **No kernel build** — the kernel is prebuilt (`TARGET_PREBUILT_KERNEL`). The

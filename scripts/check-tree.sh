@@ -10,7 +10,7 @@
 #      fs_mgr flag in the known-good set
 #   3. twrp.flags parses as a well-formed TWRP flags file
 #   4. makefiles have balanced conditionals and no recipe lines (tabs)
-#   5. the workflow is valid YAML and references existing scripts
+#   5. the build guards (shell lint + build-tree patches) are present and wired
 #   6. shell scripts pass `bash -n`
 #   7. no stray absolute build-host paths
 #   8. the device codename is consistent
@@ -51,12 +51,11 @@ REQUIRED=(
 	recovery/root/lib/firmware/st_fts_k2_htp.ftb
 	scripts/fetch-kernel.sh
 	scripts/fox-sync.sh
-	.github/workflows/build-recovery.yml
 	README.md
 	docs/PROVENANCE.md
-	docs/FSTAB-DIFF.md
-	docs/PHASE2-CRYPTO.md
-	docs/KNOWN_ISSUES.md
+	docs/history/FSTAB-DIFF.md
+	docs/history/PHASE2-CRYPTO.md
+	docs/history/KNOWN_ISSUES.md
 	docs/BUILD-STATUS.md
 	docs/RAMDISK-MODULES.md
 	docs/kernel-prep/README.md
@@ -68,6 +67,14 @@ REQUIRED=(
 	scripts/build-local.sh
 	docs/BUILD-ON-SERVER.md
 	scripts/obsolete-build-vars.txt
+	docs/STATUS.md
+	docs/history/README.md
+	scripts/apply-patches.sh
+	scripts/check-shell.sh
+	recovery/root/sbin/mars-fw-mount.sh
+	recovery/root/init.recovery.usb.rc
+	recovery/root/vendor/etc/vintf/manifest.xml
+	recovery/root/twres/languages/zh_CN.xml
 )
 for f in "${REQUIRED[@]}"; do
 	[ -f "$f" ] && pass "$f" || fail "$f is missing"
@@ -281,67 +288,25 @@ grep -q 'TARGET_RECOVERY_FSTAB' BoardConfig.mk \
 P=$(grep -oE 'TARGET_RECOVERY_FSTAB := \$\(DEVICE_PATH\)/[^ ]+' BoardConfig.mk | sed 's|.*DEVICE_PATH)/||')
 if [ -n "$P" ] && [ -f "$P" ]; then pass "TARGET_RECOVERY_FSTAB -> $P exists"
 elif [ -n "$P" ]; then fail "TARGET_RECOVERY_FSTAB -> $P does not exist"; fi
-
 # ---------------------------------------------------------------------------
-hdr "5. workflow"
-WF=.github/workflows/build-recovery.yml
-if python3 -c "import yaml,sys; yaml.safe_load(open('$WF'))" 2>/dev/null; then
-	pass "$WF is valid YAML"
-else
-	fail "$WF is not valid YAML"
-fi
-for s in scripts/fetch-kernel.sh scripts/fox-sync.sh; do
-	grep -q "$s" "$WF" && pass "$WF references $s" || warn "$WF does not reference $s"
+hdr "5. build guards"
+for f in scripts/check-shell.sh scripts/apply-patches.sh scripts/build-local.sh; do
+	[ -x "$f" ] && pass "$f is executable" || fail "$f is missing or not executable"
 done
-if grep -vE '^[[:space:]]*#' "$WF" | grep -q 'repo init -u https://gitlab.com/OrangeFox/sync.git -b fox_14.1'; then
-	fail "$WF still uses the invalid repo init -b fox_14.1"
-else
-	pass "$WF does not use the invalid repo init -b fox_14.1 (only in comments)"
-fi
-
-# Regression guards for the two failures seen in CI run 37761738123.
-# 1) `set -u` breaks AOSP's build/envsetup.sh ("TOP: unbound variable").
-#    Checked precisely against the run block of the step that sources it.
-#    NB: the option cluster must be parsed, not string-matched -- "-u" is NOT a
-#    substring of "-euo".
-if python3 - "$WF" <<'PY'
-import sys, re, yaml
-
-def enables_nounset(line):
-    if not line.startswith("set "):
-        return False
-    if re.search(r'(^|\s)-[a-zA-Z]*u[a-zA-Z]*(\s|$)', line):
-        return True
-    if re.search(r'(^|\s)-o\s+nounset(\s|$)', line):
-        return True
-    if re.search(r'(^|\s)--nounset(\s|$)', line):
-        return True
-    return False
-
-d = yaml.safe_load(open(sys.argv[1]))
-for s in d["jobs"]["build"]["steps"]:
-    run = s.get("run", "")
-    if "source build/envsetup.sh" not in run:
-        continue
-    for line in run.splitlines():
-        line = line.strip()
-        if line.startswith("source build/envsetup.sh"):
-            sys.exit(1)                    # reached the source line safely
-        if enables_nounset(line):
-            sys.exit(0)                    # BAD: nounset is in effect
-sys.exit(1)
-PY
-then
-	fail "$WF enables 'set -u' before sourcing build/envsetup.sh (breaks on \$TOP)"
-else
-	pass "workflow does not enable 'set -u' before build/envsetup.sh"
-fi
-# 2) the upstream vendor/twrp patch path bug must stay worked around.
+grep -q 'check-shell.sh' scripts/build-local.sh \
+	&& pass "build-local.sh runs the shell lint (check-shell.sh)" \
+	|| fail "build-local.sh does not run check-shell.sh"
+grep -q 'apply-patches.sh' scripts/build-local.sh \
+	&& pass "build-local.sh applies the build-tree patches (apply-patches.sh)" \
+	|| fail "build-local.sh does not run apply-patches.sh"
+# Regression guard from CI run 37761738123: the upstream orangefox_sync.sh looks for
+# the vendor/twrp patch in the wrong directory; fox-sync.sh pre-places it and verifies.
 if grep -q 'patch-vendor-twrp' scripts/fox-sync.sh; then
 	pass "fox-sync.sh works around the vendor/twrp patch path bug"
 else
 	fail "fox-sync.sh no longer works around the upstream vendor/twrp patch path bug"
 fi
+
 
 # ---------------------------------------------------------------------------
 hdr "6. shell scripts"

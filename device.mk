@@ -64,7 +64,7 @@ PRODUCT_SOONG_NAMESPACES += \
 # are only referenced when the project is really present.  If it is absent the
 # recovery has to rely on prebuilt blobs under recovery/root/vendor/lib64/,
 # which is how OrangeFox/device/vayu ships them.
-# See docs/KNOWN_ISSUES.md I16.
+# See docs/history/KNOWN_ISSUES.md I16.
 # ---------------------------------------------------------------------------
 TARGET_RECOVERY_DEVICE_MODULES += \
     libdisplayconfig.qti \
@@ -84,7 +84,7 @@ else
 $(warning device/xiaomi/mars: vendor/qcom/opensource/commonsys-intf/display is not in the manifest)
 $(warning   -> libdisplayconfig.qti / vendor.display.config@* will NOT be built into recovery)
 $(warning   -> If the display does not come up, extract them from a mars ROM into)
-$(warning      recovery/root/vendor/lib64/ (see docs/KNOWN_ISSUES.md I16))
+$(warning      recovery/root/vendor/lib64/ (see docs/history/KNOWN_ISSUES.md I16))
 endif
 
 # ---------------------------------------------------------------------------
@@ -122,7 +122,7 @@ endif
 #
 # KNOWN LIMITATION: loading the ROM's modules only works when they were built
 # against the same kernel (CONFIG_MODVERSIONS symbol CRCs / vermagic).  See
-# docs/KNOWN_ISSUES.md I7 and docs/RAMDISK-MODULES.md.
+# docs/history/KNOWN_ISSUES.md I7 and docs/RAMDISK-MODULES.md.
 # ---------------------------------------------------------------------------
 TW_LOAD_VENDOR_MODULES := "xiaomi_touch.ko fts_touch_spi.ko msm_drm.ko hwid.ko mmhardware_sysfs_dlkm.ko qti_battery_charger_main.ko adsp_loader_dlkm.ko apr_dlkm.ko q6_notifier_dlkm.ko q6_pdr_dlkm.ko snd_event_dlkm.ko"
 # v2: the device's own vendor_boot ramdisk also carries modules built for the
@@ -140,7 +140,7 @@ TW_LOAD_VENDOR_BOOT_MODULES := true
 #
 # UNCERTAIN: the .ftb blobs were taken from venus, not from a mars ROM dump.
 # If touch does not initialise, dump /vendor/firmware from a mars device and
-# replace them (see docs/KNOWN_ISSUES.md).
+# replace them (see docs/history/KNOWN_ISSUES.md).
 # ---------------------------------------------------------------------------
 PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/firmware/st_fts_k2.ftb:$(TARGET_COPY_OUT_VENDOR)/firmware/st_fts_k2.ftb \
@@ -179,7 +179,7 @@ PRODUCT_COPY_FILES += \
 # place vayu puts it).
 #
 # The QCOM TEE stack itself cannot be built from source and is checked in as
-# vendor blobs under recovery/root/ -- see docs/V4-REPORT.md for the exact list
+# vendor blobs under recovery/root/ -- see docs/history/V4-REPORT.md for the exact list
 # and their provenance (LineageOS 23.2 sm8350-common proprietary files).
 # ---------------------------------------------------------------------------
 TW_USE_FSCRYPT_POLICY := 2

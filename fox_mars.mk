@@ -39,7 +39,7 @@ OF_DONT_PATCH_ENCRYPTED_DEVICE := 1
 # vendorsetup.sh exported it, but nothing consumes it in fox_14.1.
 # OrangeFox already tolerates absent logical partitions on its own.
 # (The crypto-related `OF_FBE_METADATA_MOUNT_IGNORE` does exist and belongs to
-#  phase 2 -- see docs/PHASE2-CRYPTO.md.)
+#  phase 2 -- see docs/history/PHASE2-CRYPTO.md.)
 
 # Use magiskboot for all boot image patching (A/B + header v3 safety).
 OF_USE_MAGISKBOOT_FOR_ALL_PATCHES := 1
