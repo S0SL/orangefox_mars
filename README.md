@@ -1,106 +1,102 @@
-# OrangeFox recovery for the Xiaomi Mi 11 Pro (`mars`)
+# 小米 11 Pro（`mars`）OrangeFox recovery 设备树
 
-Device tree for building an **OrangeFox Recovery** (base: `fox_14.1`, i.e. AOSP 14
-+ OrangeFox R12) for the **Xiaomi Mi 11 Pro**, codename **`mars`**, SoC
-**Qualcomm sm8350 (Snapdragon 888)**, **A/B**, **no dedicated recovery partition**.
+本仓库用于构建 **OrangeFox Recovery**（基础：`fox_14.1`，即 AOSP 14 + OrangeFox R12），
+目标设备为**小米 11 Pro**，代号 **`mars`**，SoC **高通 sm8350（骁龙 888）**，
+**A/B 分区**、**没有独立 recovery 分区**。
 
-The recovery is built **into `boot.img`** (`BOARD_USES_RECOVERY_AS_BOOT`); nothing
-in this repository flashes anything by itself.
+recovery 被构建进 **`boot.img`**（`BOARD_USES_RECOVERY_AS_BOOT`）。本仓库里的任何脚本
+**都不会自行向手机写入任何东西**。
 
-> **Current status: v4.9 — usable.**
-> `/data` is decrypted with the user's PIN (FBE, hardware-wrapped keys, metadata
-> encryption), ADB and MTP work, battery/language/theme defaults are applied, and
-> zip flashing + partition backup/restore work.
-> Full status, the fix history and the remaining work: **[docs/STATUS.md](docs/STATUS.md)**.
-> The latest tested image is the `boot-v4.9` asset of the
-> [`recovery-test`](https://github.com/S0SL/twrp_mars/releases/tag/recovery-test)
-> pre-release (`sha256 0567218e977f45c51267291a04c20557c12f594cec6d943db5753dc8d127b4b1`).
+> **当前状态：v4.9，可用。**
+> 输入锁屏 PIN 后可以解密 `/data`（FBE + 硬件包裹密钥 + metadata 加密），ADB 与 MTP 同时可用，
+> 电量/语言/主题默认值已内置，刷 zip 与分区备份/恢复均正常。
+> 完整状态、修复史与后续工作见 **[docs/STATUS.md](docs/STATUS.md)**（接手文档）。
+> 最近一次实测镜像：`recovery-test` 预发布里的 `boot-v4.9`
+> （`sha256 0567218e977f45c51267291a04c20557c12f594cec6d943db5753dc8d127b4b1`），
+> 稳定版发布见
+> [recovery-v4.9-stable](https://github.com/S0SL/twrp_mars/releases/tag/recovery-v4.9-stable)。
 
 ---
 
-## 1. Try it without flashing
+## 1. 先试，不写分区
 
 ```sh
 curl -L -O https://github.com/S0SL/twrp_mars/releases/download/recovery-test/boot-v4.9.img.gz
 gunzip boot-v4.9.img.gz
-fastboot boot boot-v4.9.img          # loads it into RAM; writes nothing
+fastboot boot boot-v4.9.img          # 载入内存运行；不写入任何分区
 ```
 
-`fastboot flash boot boot-v4.9.img` makes the device boot into recovery **every
-time** — that is inherent to "no recovery partition" (see
-[limitations](docs/STATUS.md)). To go back to Android,
-re-flash the ROM's own `boot.img`.
+`fastboot flash boot boot-v4.9.img` 会让手机**每次开机都进入 recovery** —— 这是"没有独立
+recovery 分区"的必然结果（见 [已知限制](docs/STATUS.md)）。要回 Android，请重刷 ROM 自带的
+`boot.img`。
 
-## 2. Build it
+## 2. 构建
 
-You need your own build server (the AOSP tree does not fit in a container):
+需要一台真实的构建服务器（AOSP 源码树放不进容器）：
 
-* **step by step:** [docs/BUILD-ON-SERVER.md](docs/BUILD-ON-SERVER.md)
-* short version, on a machine that already has the tree:
+* **完整步骤：** [docs/BUILD-ON-SERVER.md](docs/BUILD-ON-SERVER.md)
+* 已经同步过源码树的机器上，简版：
 
   ```sh
   git clone https://github.com/S0SL/twrp_mars.git ~/twrp-mars
-  ~/twrp-mars/scripts/build-local.sh --fox-dir ~/fox_14.1            # first run
-  ~/twrp-mars/scripts/build-local.sh --fox-dir ~/fox_14.1 --skip-sync  # later runs
+  ~/twrp-mars/scripts/build-local.sh --fox-dir ~/fox_14.1            # 首次
+  ~/twrp-mars/scripts/build-local.sh --fox-dir ~/fox_14.1 --skip-sync  # 之后
   ```
 
-  The build job is `bootimage`; the artifact is `out/target/product/mars/boot.img`.
-  `MARS_JOBS=12` is the sweet spot on a 24-core / 22 GB box (16 threads is slower).
+  构建目标是 `bootimage`，产物为 `out/target/product/mars/boot.img`。
+  在 24 核 / 22 GB 的机器上 `MARS_JOBS=12` 最快（16 线程反而更慢）。
 
-The build script runs two guards before compiling anything:
+构建脚本在编译开始前会跑两道守卫：
 
-| hook | script | what it protects against |
+| 守卫 | 脚本 | 防的是什么 |
 | --- | --- | --- |
-| `== 0. shell syntax lint ==` | `scripts/check-shell.sh` | bash-isms in the shell scripts that ship in the ramdisk (recovery runs Android **mksh**; a `${ro.boot.slot_suffix}` killed the v4.7 firmware script) |
-| `== 0b. build-tree patches ==` | `scripts/apply-patches.sh` | re-applies the AOSP-side fixes (FBE credential flow, GUI drag cadence) that this device needs but that cannot live in a device tree |
+| `== 0. shell syntax lint ==` | `scripts/check-shell.sh` | 打进 ramdisk 的 shell 脚本里的 bash 专有写法（recovery 跑的是 Android **mksh**；v4.7 就是因为 `${ro.boot.slot_suffix}` 直接 `bad substitution` 退出） |
+| `== 0b. build-tree patches ==` | `scripts/apply-patches.sh` | 重新应用本设备需要、但又不能放进设备树的 AOSP 侧补丁（FBE 凭据流程、GUI 拖拽节奏） |
 
-Static checks for the device tree itself: `./scripts/check-tree.sh` (required
-files, fstab/flags syntax, makefile sanity, codename consistency) and
-`./scripts/check-shell.sh`.
+设备树自身的静态检查：`./scripts/check-tree.sh`（必需文件、fstab/flags 语法、makefile 结构、
+代号一致性）与 `./scripts/check-shell.sh`。
 
-## 3. Repository layout
+## 3. 目录结构
 
 ```
 BoardConfig.mk device.mk fox_mars.mk twrp_mars.mk AndroidProducts.mk Android.mk
 vendorsetup.sh board-info.txt manifest.xml modules.load.recovery
-firmware/                       touch firmware staged into the ramdisk
-prebuilt/                       prebuilt kernel Image (not committed)
-recovery/root/                  files that go into the recovery ramdisk:
-  init.recovery.qcom.rc           mounts + property defaults (see STATUS.md)
-  init.recovery.usb.rc            QTI configfs gadget (adb + MTP + sideload)
-  sbin/mars-fw-mount.sh           mounts the firmware/modem image for the TEE
+firmware/                       打进 ramdisk 的触摸固件
+prebuilt/                       预编译内核 Image（不提交）
+recovery/root/                  进入 recovery ramdisk 的文件：
+  init.recovery.qcom.rc           挂载与属性默认值（见 docs/STATUS.md）
+  init.recovery.usb.rc            QTI configfs gadget（adb + MTP + sideload）
+  sbin/mars-fw-mount.sh           挂载固件分区供 TEE 使用
   system/etc/{recovery.fstab,twrp.flags}
-  system/bin/, vendor/lib64/      QSEE/keymaster/gatekeeper blobs (see docs/PROVENANCE.md)
-  twres/languages/zh_CN.xml       simplified-Chinese UI translation
-  vendor/etc/vintf/manifest.xml   VINTF declarations the vendor HALs need
-scripts/                        sync / build / patch / check / publish helpers
-patches/                        notes for the build-tree fixes (applied by apply-patches.sh)
-docs/                           see below
+  system/bin/, vendor/lib64/      QSEE/keymaster/gatekeeper 相关 blob（见 docs/PROVENANCE.md）
+  twres/languages/zh_CN.xml       简体中文语言包
+  vendor/etc/vintf/manifest.xml   厂商 HAL 需要的 VINTF 声明
+scripts/                        同步 / 构建 / 打补丁 / 检查 / 发版脚本
+patches/                        构建树补丁的说明（由 apply-patches.sh 应用）
+docs/                           见下
 ```
 
-## 4. Documentation
+## 4. 文档
 
-| file | content |
+| 文件 | 内容 |
 | --- | --- |
-| **[docs/STATUS.md](docs/STATUS.md)** | **handover doc** — what works, every fix and why, what is left (v5), known limitations |
-| [docs/BUILD-ON-SERVER.md](docs/BUILD-ON-SERVER.md) | full build guide, timings, every failure this project hit |
-| [docs/BACKUP-GUIDE.md](docs/BACKUP-GUIDE.md) | how to back up `/data` (rooted Android) and partitions (recovery), and how to restore |
-| [docs/PROVENANCE.md](docs/PROVENANCE.md) | where every blob comes from |
-| [docs/RAMDISK-MODULES.md](docs/RAMDISK-MODULES.md) | staging kernel modules (touch/display) into the ramdisk |
-| [docs/BUILD-STATUS.md](docs/BUILD-STATUS.md) | troubleshooting chronology (the "why" behind every guard) |
-| [docs/kernel-prep/](docs/kernel-prep/) | prepared-but-unpushed kernel-side change (touch modules) |
-| [docs/history/](docs/history/) | superseded phase reports and plans (v4, v4.6, phase 2, fstab diff, phase-1 known issues) |
+| **[docs/STATUS.md](docs/STATUS.md)** | **接手文档** —— 当前能做什么、每一处修复的原因、剩余工作（v5）、已知限制 |
+| [docs/BUILD-ON-SERVER.md](docs/BUILD-ON-SERVER.md) | 完整构建指南、耗时、本项目踩过的每一个坑 |
+| [docs/BACKUP-GUIDE.md](docs/BACKUP-GUIDE.md) | 备份 `/data`（Android 内 root）与分区（recovery 内）的方法与恢复流程 |
+| [docs/PROVENANCE.md](docs/PROVENANCE.md) | 每个 blob 的来源与不确定点 |
+| [docs/RAMDISK-MODULES.md](docs/RAMDISK-MODULES.md) | 把内核模块（触摸/显示）打进 ramdisk 的方法 |
+| [docs/BUILD-STATUS.md](docs/BUILD-STATUS.md) | 排障编年史（"为什么会有这些守卫"） |
+| [docs/kernel-prep/](docs/kernel-prep/) | 已准备但未推送的内核侧改动（触摸模块） |
+| [docs/history/](docs/history/) | 被取代的阶段报告与计划（v4、v4.6、phase 2、fstab 对比、phase 1 已知问题） |
 
-## 5. Support / known limitations (short)
+## 5. 已知限制（简述）
 
-* No `recovery` partition: a flashed `boot.img` boots recovery, not Android.
-* `/data` decryption needs the phone's TEE **and** the vendor property
-  `vendor.gatekeeper.disable_spu=true` (the recovery sets it; the stock ROM ships
-  it — see [STATUS.md](docs/STATUS.md)).
-* SELinux runs **permissive** in this recovery (enforcing needs a sepolicy set).
-* `AB_OTA_UPDATER` is off, so zips that rewrite logical partitions
-  (`system`/`vendor`/…) are not supported yet — see the v5 list in STATUS.md.
-* The image is signed with AVB test keys — for unlocked bootloaders only.
+* **没有 recovery 分区**：刷入 `boot.img` 后每次开机都进 recovery，而不是 Android。
+* **`/data` 解密依赖**：手机 TEE，以及厂商属性 `vendor.gatekeeper.disable_spu=true`
+  （recovery 已设置；stock ROM 自带 —— 原因见 [STATUS.md](docs/STATUS.md)）。
+* **SELinux 为 permissive**：要转 enforcing 需补一套 sepolicy。
+* **`AB_OTA_UPDATER` 未开启**：改写 logical partition（`system`/`vendor`/…）的 zip 暂不支持，
+  见 STATUS.md 的 v5 清单。
+* 镜像使用 **AVB 测试密钥**，仅适用于已解锁 bootloader。
 
-Everything above is explained, with evidence and the exact source locations, in
-**[docs/STATUS.md](docs/STATUS.md)**.
+上述每一条的原因与证据都在 **[docs/STATUS.md](docs/STATUS.md)** 里。
