@@ -43,8 +43,19 @@ on fs
 
     # Load ADSP firmware for PMIC (needed on lahaina)
 
+# v4.9: the vendor ROM ships "vendor.gatekeeper.disable_spu=true"
+# (device/xiaomi/sm8350-common/vendor.prop:174) and recovery does not set it.
+# Without it the vendor gatekeeper HAL initialises the SPU, which recovery cannot
+# do - logcat showed "KeymasterUtils: SPU is not available" followed by
+# "GatekeeperHalDevice: verify_legacy" / "ret: -45" (EOPNOTSUPP), so keystore2
+# reported "No suitable auth token found" and the correct PIN was rejected.
+# Matching the vendor property makes the HAL take the same path as the ROM.
 on init
     setprop sys.usb.configfs 1
+
+    # v4.9: same value as the vendor ROM (vendor.prop:174) so the gatekeeper
+    # HAL does not try to initialise the SPU in recovery.
+    setprop vendor.gatekeeper.disable_spu true
     # v4: UDC name, belt-and-braces.  It normally arrives via
     # androidboot.usbcontroller (see the note in BoardConfig.mk), but the
     # boot image cmdline has already been observed to lose it; without a
