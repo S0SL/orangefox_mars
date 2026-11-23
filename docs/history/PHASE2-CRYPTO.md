@@ -1,4 +1,12 @@
-# Phase 2 — decrypting `/data`
+# Phase 2 —— 解密 `/data`（历史）
+
+> **中文摘要（历史文档）：** 这是"解密 `/data`"（phase 2）的调研与实施计划，
+> 写于实现之前。**已被实现取代**：v4 起开启 FBE 解密，v4.9 实测可解密
+> （`Data successfully decrypted`）。当时列出的关键点（`TW_INCLUDE_CRYPTO`、
+> `TW_INCLUDE_CRYPTO_FBE`、`qcom_decrypt`/`qcom_decrypt_fbe`、QCOM TEE blob
+> `qseecomd`/keymaster/gatekeeper、`TW_USE_FSCRYPT_POLICY := 2`）都已落地；
+> 实际改动与踩坑见 [V4-REPORT.md](V4-REPORT.md) 与 [../STATUS.md](../STATUS.md) §2。
+> 正文保留原始英文记录。
 
 > **v4: RESOLVED.** Phase 2 is implemented in v4 (`boot-v4.img`, `TW_DEVICE_VERSION
 > mars-2`).  What actually had to change is recorded in
@@ -32,7 +40,7 @@
 Phase 1 deliberately ships with `TW_INCLUDE_CRYPTO := false`.
 This file records exactly what has to change, and why.
 
-## 1. What we know already (from `FSTAB-DIFF.md`)
+## 1. 已知信息（来自 FSTAB-DIFF.md）
 
 mars uses **FBE with hardware-wrapped keys**:
 
@@ -49,7 +57,7 @@ should serve both HyperOS 2 (Android 14) and LineageOS 23.2 (Android 16).
 The only sm8350-specific fstab change OrangeFox ever made is adding `wrappedkey`
 to the `/metadata` line — this repo already carries it.
 
-## 2. Board/product changes to make
+## 2. 需要改的 Board/产品配置
 
 In `device.mk`:
 
@@ -79,7 +87,7 @@ PLATFORM_VERSION_LAST_STABLE := $(PLATFORM_VERSION)
 
 `BOARD_USES_QCOM_FBE_DECRYPTION := true` is already in `BoardConfig.mk`.
 
-## 3. The blocking piece: QCOM TEE blobs
+## 3. 关键阻塞：QCOM TEE blob
 
 Decryption needs the vendor's TEE/keystore stack, which is **not buildable from
 source**. `OrangeFox/device/vayu` ships it prebuilt under
@@ -128,7 +136,7 @@ you care about (`adb pull /vendor/lib64/...`, `/vendor/bin/hw/...`,
 are the ROM's own blobs, so they are ABI-matched to that ROM's keymaster HAL —
 which is also why cross-ROM decryption is genuinely hard.
 
-## 4. Risks specific to phase 2
+## 4. phase 2 特有的风险
 
 | risk | why |
 | --- | --- |
@@ -138,7 +146,7 @@ which is also why cross-ROM decryption is genuinely hard.
 | `metadata` layout | `keydirectory=/metadata/vold/metadata_encryption` must be readable *before* `/data` can be decrypted; that in turn needs `wrappedkey` on `/metadata`. |
 | Anti-rollback | `PLATFORM_SECURITY_PATCH := 2099-12-31` is the usual workaround, but it can interact badly with ROM OTA logic. |
 
-## 5. Suggested order of work
+## 5. 建议的实施顺序
 
 1. Get phase 1 booting and confirm the UI, MTP and ADB on hardware.
 2. Dump the mars `vendor` blobs for the target ROM (start with LineageOS 23.2,

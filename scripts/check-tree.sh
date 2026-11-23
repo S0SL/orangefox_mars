@@ -316,7 +316,8 @@ done
 
 # ---------------------------------------------------------------------------
 hdr "7. no build-host paths leaked"
-if grep -rn '/root/mi11\|/home/runner/work/twrp_mars/twrp_mars' \
+# 构建机上的绝对路径不应出现在树里；用通用模式，不写具体用户名/路径
+if grep -rnE '(^|[^A-Za-z0-9_])/(root|home)/[A-Za-z][A-Za-z0-9_-]+/(twrp|fox|aosp|android)' \
 	--include='*.mk' --include='*.sh' --include='*.yml' --include='*.md' . 2>/dev/null \
 	| grep -v '^\./docs/' | grep -v '^\./scripts/check-tree.sh'; then
 	fail "absolute build-host paths found (see above)"

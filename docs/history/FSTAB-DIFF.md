@@ -1,4 +1,10 @@
-# `recovery.fstab` and crypto: LineageOS vs TWRP differences
+# `recovery.fstab` 与 crypto：LineageOS 与 TWRP 的差异（历史）
+
+> **中文摘要（历史文档）：** 这是 phase 2 的起点分析：对比 LineageOS（A16）与两套
+> TWRP/OrangeFox（A11/A13）树里**同名文件**的差异，重点是 fstab 中与 crypto 相关的部分。
+> 结论（`/data` 的 FBE 方案、`metadata_encryption`、`keydirectory`、`wrappedkey_v0`）
+> 已写入设备树的 `recovery/root/system/etc/recovery.fstab`，并由
+> `scripts/check-tree.sh` 校验语法与可用 flag。正文保留原始英文对比。
 
 This is the phase-2 starting point: what changed between the LineageOS (LAS)
 tree and the two TWRP/OrangeFox trees, for **same-named files** and for the
@@ -33,7 +39,7 @@ Compared artefacts:
 
 ---
 
-## 1. `fstab.qcom`: LOS-A16 vs TW-A11
+## 1. `fstab.qcom`：LOS-A16 与 TW-A11
 
 Full `diff -u` reduces to these semantic changes (licence header noise omitted):
 
@@ -63,7 +69,7 @@ Full `diff -u` reduces to these semantic changes (licence header noise omitted):
 +/dev/block/bootdevice/by-name/spunvm /mnt/vendor/spunvm
 ```
 
-### What actually matters here
+### 真正要紧的地方
 
 | # | difference | impact |
 | --- | --- | --- |
@@ -77,9 +83,9 @@ Full `diff -u` reduces to these semantic changes (licence header noise omitted):
 
 ---
 
-## 2. Crypto-related differences (the phase-2 critical part)
+## 2. 与 crypto 相关的差异（phase 2 的关键部分）
 
-### 2.1 `/data` — identical FBE scheme across all four trees
+### 2.1. `/data` —— 四棵树使用相同的 FBE 方案
 
 LOS-A16 (`fstab.qcom`), TW-A11 (`fstab.qcom` and `recovery.fstab`),
 FOX-A13 and FOX-A14-VAYU all agree on:
@@ -115,7 +121,7 @@ Literal `/data` lines (whitespace trimmed), to make the agreement obvious:
 era and Android 16. A phase-2 implementation can use the same crypto parameters
 for both HyperOS 2 (Android 14) and LineageOS 23.2 (Android 16).
 
-### 2.2 `/metadata` — the one real functional difference
+### 2.2. `/metadata` —— 唯一真正的功能性差异
 
 ```
 # LOS-A16 & TW-A11 (both files)
@@ -132,7 +138,7 @@ key can be unwrapped via the QCOM keymaster/TEE rather than derived in software.
 **This is the single most important line for phase 2.** This repo already
 carries it.
 
-### 2.3 `twrp.flags`: `/data` and `/metadata` entries
+### 2.3. `twrp.flags`：`/data` 与 `/metadata` 条目
 
 ```
 # TW-A11-FLAGS
@@ -153,7 +159,7 @@ Differences:
 | **F10** | FOX-A13 adds `wrappedkey` + `backup=1` to `/metadata` | Allows backing up the metadata partition, and enables wrapped keys. This repo carries `wrappedkey` and `backup=1`. |
 | **F11** | TW-A11-FLAGS has `/firmware ... mounttodecrypt;fsflags=ro` | `mounttodecrypt` is a legacy flag; dropped. |
 
-### 2.4 `TARGET_RECOVERY_FSTAB` and crypto build flags
+### 2.4. `TARGET_RECOVERY_FSTAB` 与 crypto 构建开关
 
 | item | LOS-A16 | TW-A11 | FOX-KOTAH-C (A13) | this repo (phase 1) |
 | --- | --- | --- | --- | --- |
@@ -173,7 +179,7 @@ claim a newer security patch than the ROM, which is needed so the crypto blobs
 accept the recovery as a "new enough" client. **They are likely required in
 phase 2** and are recorded here for that reason.
 
-### 2.5 `init.recovery.qcom.rc`: LOS-A16 vs TW-A11
+### 2.5. `init.recovery.qcom.rc`：LOS-A16 与 TW-A11
 
 ```
  on fs
@@ -207,7 +213,7 @@ unmounted first.
 
 ---
 
-## 3. Summary for phase 2
+## 3. phase 2 小结
 
 1. The `/data` FBE parameters are **stable across Android 11 → 16**; reuse them.
 2. Add `wrappedkey` to `/metadata` — already done here (this is the single

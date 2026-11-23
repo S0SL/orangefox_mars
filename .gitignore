@@ -12,3 +12,15 @@
 .DS_Store
 prebuilt/modules/
 recovery/root/lib/modules/*.ko
+
+# Secrets and personal data must never be committed.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.jks
+*.keystore
+id_rsa*
+*.log
+screenshots/

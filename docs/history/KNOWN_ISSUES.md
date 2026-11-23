@@ -1,9 +1,14 @@
-# Known issues, risks and open questions
+# 已知问题、风险与未决点（历史）
+
+> **中文摘要（历史文档）：** phase 1 时期的已知问题清单（I1–I19、R1–R5），
+> **其中多数已经解决或结论已更新**（例如 I13 的亮度/几何、I17–I19 的 cmdline/USB/挖孔、
+> "phase 1 不解密 /data"）。当前有效的限制与待办请看 [../STATUS.md](../STATUS.md) §3–§4。
+> 正文保留原始英文记录（含当时的严重级别与缓解措施），用于追溯"为什么会有这些守卫"。
 
 Severity: **H** = can stop the build or the boot, **M** = degraded function,
 **L** = cosmetic.
 
-## Build / CI
+## 构建 / CI
 
 | id | sev | issue | mitigation / status |
 | --- | --- | --- | --- |
@@ -14,7 +19,7 @@ Severity: **H** = can stop the build or the boot, **M** = degraded function,
 | **I5** | M | `openjdk-17` is installed for AOSP 14; if a manifest project still needs an older JDK the build will say so. | `apt-get install openjdk-11-jdk` alongside, or set `JAVA_HOME` to 11 for the offending module. |
 | **I6** | L | `apt-get install neofetch` is in the dependency list because OrangeFox's scripts may print a banner with it. | Harmless if it is missing. |
 
-## Device tree correctness
+## 设备树正确性
 
 | id | sev | issue | mitigation / status |
 | --- | --- | --- | --- |
@@ -33,7 +38,7 @@ Severity: **H** = can stop the build or the boot, **M** = degraded function,
 | **I18** | M | **`TW_EXCLUDE_DEFAULT_USB_INIT := true` with no replacement `init.recovery.usb.rc`.** We set the exclusion (copied from vayu) but never shipped the QTI configfs file, so the gadget had no `mtp.gs0` function and no `os_desc` -- MTP cannot work on configfs without it, and no `sys.usb.state` is ever set for the mtp configs. | Fixed in v4: `recovery/root/init.recovery.usb.rc` added, byte-identical to `OrangeFox/device/vayu`'s copy (sha256 `bacf6b892889cee51aa1f775484426ca64b00f6beee95fcf42f661347d302a5a`). |
 | **I19** | L | **`OF_SCREEN_H` was 3200 (panel-native) instead of 2400.** The theme is 1080-wide and OrangeFox scales x by `fb_w/1080` and y by `(fb_h+TW_H_OFFSET)/OF_SCREEN_H` independently, so 3200 stretched the UI ~37% horizontally relative to vertical; 2400 is the value every sm8350 OrangeFox tree uses (kotah/venus, vayu). Also the status-bar clock sat *inside* mars' 208x137 px top-left cutout (`OF_STATUS_INDENT_LEFT` was 48). | Fixed in v4: `OF_SCREEN_H := 2400`, `OF_STATUS_H := 137` (the ROM's own `status_bar_height_portrait`), `OF_STATUS_INDENT_LEFT := 216` (> 208). Users can also change the clock position at runtime in Fox settings -> status bar (theme variable `center_clock`, default 2 = left). |
 
-## Design-level risks
+## 设计层面的风险
 
 | id | sev | risk | comment |
 | --- | --- | --- | --- |
@@ -43,7 +48,7 @@ Severity: **H** = can stop the build or the boot, **M** = degraded function,
 | **R4** | M | **Cross-ROM flashing is the stated goal but is the hardest part**: HyperOS 2 (Android 14) and LOS 23.2 (Android 16) have different keymaster HALs and different vendor module sets. | Phase 2 note: consider two recovery variants rather than one universal build. |
 | **R5** | L | **No signature/keys.** The produced images use AVB test keys. | Fine for an unlocked bootloader; do not use for locked/relocked devices. |
 
-## Non-goals in phase 1
+## phase 1 的非目标
 
 * `/data` decryption (phase 2 — see `PHASE2-CRYPTO.md`).
 * Building the kernel or its modules in this repository.
