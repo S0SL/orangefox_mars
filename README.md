@@ -14,14 +14,14 @@ recovery 被构建进 **`boot.img`**（`BOARD_USES_RECOVERY_AS_BOOT`）。本仓
 > 最近一次实测镜像：`recovery-test` 预发布里的 `boot-v4.9`
 > （`sha256 0567218e977f45c51267291a04c20557c12f594cec6d943db5753dc8d127b4b1`），
 > 稳定版发布见
-> [recovery-v4.9-stable](https://github.com/S0SL/twrp_mars/releases/tag/recovery-v4.9-stable)。
+> [recovery-v4.9-stable](https://github.com/S0SL/orangefox_mars/releases/tag/recovery-v4.9-stable)。
 
 ---
 
 ## 1. 先试，不写分区
 
 ```sh
-curl -L -O https://github.com/S0SL/twrp_mars/releases/download/recovery-test/boot-v4.9.img.gz
+curl -L -O https://github.com/S0SL/orangefox_mars/releases/download/recovery-test/boot-v4.9.img.gz
 gunzip boot-v4.9.img.gz
 fastboot boot boot-v4.9.img          # 载入内存运行；不写入任何分区
 ```
@@ -38,9 +38,9 @@ recovery 分区"的必然结果（见 [已知限制](docs/STATUS.md)）。要回
 * 已经同步过源码树的机器上，简版：
 
   ```sh
-  git clone https://github.com/S0SL/twrp_mars.git ~/twrp-mars
-  ~/twrp-mars/scripts/build-local.sh --fox-dir ~/fox_14.1            # 首次
-  ~/twrp-mars/scripts/build-local.sh --fox-dir ~/fox_14.1 --skip-sync  # 之后
+  git clone https://github.com/S0SL/orangefox_mars.git ~/orangefox-mars
+  ~/orangefox-mars/scripts/build-local.sh --fox-dir ~/fox_14.1            # 首次
+  ~/orangefox-mars/scripts/build-local.sh --fox-dir ~/fox_14.1 --skip-sync  # 之后
   ```
 
   构建目标是 `bootimage`，产物为 `out/target/product/mars/boot.img`。

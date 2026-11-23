@@ -142,9 +142,9 @@
 ### 5.1 构建
 
 ```sh
-git clone https://github.com/S0SL/twrp_mars.git ~/twrp-mars
-~/twrp-mars/scripts/build-local.sh --fox-dir ~/fox_14.1              # 首次（sync + 内核 + 编译）
-~/twrp-mars/scripts/build-local.sh --fox-dir ~/fox_14.1 --skip-sync  # 之后
+git clone https://github.com/S0SL/orangefox_mars.git ~/orangefox-mars
+~/orangefox-mars/scripts/build-local.sh --fox-dir ~/fox_14.1              # 首次（sync + 内核 + 编译）
+~/orangefox-mars/scripts/build-local.sh --fox-dir ~/fox_14.1 --skip-sync  # 之后
 ```
 
 * `MARS_JOBS=12`（24 核 / 22 GB 机型上比 16 更快；`mka` 不认 `MAKE_FLAGS`，脚本会显式传 `-j`）。

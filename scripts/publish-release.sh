@@ -6,7 +6,7 @@
 # Usage:
 #   GITHUB_TOKEN=... ./scripts/publish-release.sh <run_id> [tag]
 #
-# Defaults: tag = recovery-test, repo = S0SL/twrp_mars.
+# Defaults: tag = recovery-test, repo = S0SL/orangefox_mars.
 #
 # Two things this script is careful about:
 #   * the artifact download endpoint answers 302 to a *signed* URL on
@@ -20,7 +20,7 @@ set -euo pipefail
 
 RUN_ID="${1:?usage: publish-release.sh <run_id> [tag]}"
 TAG="${2:-recovery-test}"
-REPO="${REPO:-S0SL/twrp_mars}"
+REPO="${REPO:-S0SL/orangefox_mars}"
 TOKEN="${GITHUB_TOKEN:?GITHUB_TOKEN is not set}"
 
 API="https://api.github.com/repos/$REPO"

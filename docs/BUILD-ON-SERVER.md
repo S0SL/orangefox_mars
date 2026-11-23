@@ -60,13 +60,13 @@ ccache -M 50G
 
 ```sh
 # 3.1 取本设备树（放哪都行；脚本会把它复制进 AOSP 树）
-git clone https://github.com/S0SL/twrp_mars.git ~/twrp_mars
+git clone https://github.com/S0SL/orangefox_mars.git ~/orangefox_mars
 
 # 3.2 构建。首次：同步（20-35 分钟）+ 取内核 + 编译（30-60 分钟）
-~/twrp_mars/scripts/build-local.sh --fox-dir ~/fox_14.1
+~/orangefox_mars/scripts/build-local.sh --fox-dir ~/fox_14.1
 ```
 
-所有产物落在 `~/twrp_mars/dist/`：
+所有产物落在 `~/orangefox_mars/dist/`：
 
 | 文件 | 是什么 |
 | --- | --- |
@@ -97,7 +97,7 @@ export FOX_DIR="$HOME/fox_14.1"
 export PATH="$HOME/bin:$PATH"
 
 # 4.1 同步 OrangeFox fox_14.1（20-35 分钟，约 35 GB）
-~/twrp_mars/scripts/fox-sync.sh "$FOX_DIR"
+~/orangefox_mars/scripts/fox-sync.sh "$FOX_DIR"
 #   - 克隆 OrangeFox/sync 并执行 ./orangefox_sync.sh --branch 14.1
 #   - 绕过上游的一个 bug（vendor/twrp 补丁在错误目录里找），并**校验**补丁确实打上了
 #   - 树不完整时拒绝继续
@@ -106,10 +106,10 @@ export PATH="$HOME/bin:$PATH"
 mkdir -p "$FOX_DIR/device/xiaomi/mars"
 rsync -a --exclude '.git/' --exclude '.github/' --exclude 'scripts/' \
       --exclude 'docs/' --exclude 'dist/' \
-      ~/twrp_mars/ "$FOX_DIR/device/xiaomi/mars/"
+      ~/orangefox_mars/ "$FOX_DIR/device/xiaomi/mars/"
 
 # 4.3 取预编译内核 Image（这里不编译内核）
-~/twrp_mars/scripts/fetch-kernel.sh \
+~/orangefox_mars/scripts/fetch-kernel.sh \
     "https://github.com/S0SL/android_kernel_xiaomi_sm8350/releases/download/boot-img-LOS23.2-20260930-bakasu/anykernel3-BakaSU-susfs-v2.3.0-mars.zip" \
     "$FOX_DIR/device/xiaomi/mars/prebuilt/Image"
 
@@ -163,7 +163,7 @@ ls -l out/target/product/mars/{boot.img,recovery.img}
 lunch 三段式、无过时构建变量、shell 语法）：
 
 ```sh
-~/twrp_mars/scripts/check-tree.sh
+~/orangefox_mars/scripts/check-tree.sh
 ```
 
 ## 7. 这条路径里**故意没有**的东西
@@ -202,7 +202,7 @@ lunch 三段式、无过时构建变量、shell 语法）：
 ### 安装（不需要网络）
 
 把两个文件以任意方式拷到机器上（拷到 `~/` 即可；`git pull` 后它们也在
-`~/twrp-mars/scripts/`），然后执行四行：
+`~/orangefox-mars/scripts/`），然后执行四行：
 
 ```sh
 sudo install -m 755 ~/mars-build-run.sh /usr/local/bin/mars-build-run.sh
@@ -253,8 +253,8 @@ tail -f ~/logs/systemd-build.log           # 跟踪构建日志
 | 路径 | 内容 |
 | --- | --- |
 | `~/logs/systemd-build.log` | unit 的全部输出（journal 里也有） |
-| `~/twrp-mars/dist/boot.img` | **产物** |
-| `~/twrp-mars/dist/BUILD-INFO.txt` | 用什么构建出什么，附 `sha256sum` |
+| `~/orangefox-mars/dist/boot.img` | **产物** |
+| `~/orangefox-mars/dist/BUILD-INFO.txt` | 用什么构建出什么，附 `sha256sum` |
 
 ### 机器断电/被中断之后
 
