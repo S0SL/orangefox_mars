@@ -1,5 +1,7 @@
 # 小米 11 Pro（`mars`）OrangeFox recovery 设备树
 
+> ⚠️ **非官方构建，使用有风险。** 刷入前请阅读 [免责声明](DISCLAIMER.md)。
+
 本仓库用于构建 **OrangeFox Recovery**（基础：`fox_14.1`，即 AOSP 14 + OrangeFox R12），
 目标设备为**小米 11 Pro**，代号 **`mars`**，SoC **高通 sm8350（骁龙 888）**，
 **A/B 分区**、**没有独立 recovery 分区**。
